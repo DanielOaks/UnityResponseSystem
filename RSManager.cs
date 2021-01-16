@@ -28,6 +28,8 @@ public class RSCriterion {
 
     public bool Matches(string value) {
         //TODO(dan): Hash and use min/max values as the talk recommends lol.
+        // this will probably involve splitting up matchvalue into min+max
+        // values, which can be really easily compared. then, ALWAYS a<=x<=b (slide 118).
         return value == this.matchvalue;
     }
 
@@ -47,15 +49,15 @@ public enum RSResponseGroupFlags
 }
 
 public class RSResponseGroup {
-    string name;
+    public string Name;
     bool disabled; // automagically as a result of flags
     RSResponseGroupFlags flags;
-    List<RSResponse> responses;
+    List<RSResponse> responses = new List<RSResponse>();
     int? firstResponse = null;
     int? lastResponse = null;
 
     public RSResponseGroup(string name, string flags) {
-        this.name = name;
+        this.Name = name;
         char[] splitters = {' '};
         foreach (var flagName in flags.Split(splitters, System.StringSplitOptions.RemoveEmptyEntries)) {
             switch (flagName) {
@@ -76,7 +78,7 @@ public class RSResponseGroup {
     }
 
     public RSResponseGroup(string name, RSResponseGroupFlags flags) {
-        this.name = name;
+        this.Name = name;
         this.flags = flags;
     }
 
@@ -188,6 +190,7 @@ public class RSManager : MonoBehaviour
 
     Dictionary<string,int> conceptIDs = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
     Dictionary<string,RSCriterion> criteria = new Dictionary<string,RSCriterion>();
+    Dictionary<string,RSResponseGroup> responseGroups = new Dictionary<string,RSResponseGroup>();
     List<GameObject> entitesThatCanIdle = new List<GameObject>();
 
     void LoadConceptsCSV(string path)
@@ -271,10 +274,10 @@ public class RSManager : MonoBehaviour
     }
 
     void AddCriterion(string name, RSCriterion criterion) {
-        if (criteria.ContainsKey(name)) {
+        if (this.criteria.ContainsKey(name)) {
             throw new Exception("The criterion [" + name + "] is already defined, cannot add a new criterion named this");
         }
-        criteria.Add(name, criterion);
+        this.criteria.Add(name, criterion);
     }
     
     void LoadRulesCSV(string path)
@@ -339,7 +342,9 @@ public class RSManager : MonoBehaviour
 
                 if (name != "") {
                     // add old responseGroup to our list of 'em
-                    //TODO
+                    if (responseGroup != null) {
+                        this.AddResponseGroup(responseGroup);
+                    }
 
                     // create new responsegroup
                     responseGroup = new RSResponseGroup(name, flags);
@@ -352,7 +357,17 @@ public class RSManager : MonoBehaviour
                     responseGroup.Add(new RSResponse(flags, responseTypeString, responseValue, delayAuto, delay, odds, resaydelay, weight));
                 }
             }
+            if (responseGroup != null) {
+                this.AddResponseGroup(responseGroup);
+            }
         }
+    }
+
+    void AddResponseGroup(RSResponseGroup responseGroup) {
+        if (this.responseGroups.ContainsKey(responseGroup.Name)) {
+            throw new Exception("The responseGroup [" + responseGroup.Name + "] is already defined, cannot add a new responseGroup named this");
+        }
+        this.responseGroups.Add(responseGroup.Name, responseGroup);
     }
 
     // Start is called before the first frame update
