@@ -93,6 +93,82 @@ public class RSResponseGroup {
     }
 }
 
+public class RSRulesBucket {
+    List<RSRule> rules = new List<RSRule>();
+
+    // rules are ordered in our bucket from:
+    //  most criteria -> least criteria
+    // this is described in the responsesystem talk, and is because if a rule
+    // with more criteria (that's more specific) matches, we don't need to find
+    // a rule that's less specific, we've already got the most specific one \o/
+    public void Insert(RSRule rule) {
+        int c = rule.CriteriaCount();
+
+        if (this.rules.Count == 0) {
+            this.rules.Add(rule);
+            return;
+        }
+
+        for (int i=0; i <= c; i++) {
+            if (i == c) {
+                this.rules.Add(rule);
+                break;
+            } else if (this.rules[i].CriteriaCount() < c) {
+                this.rules.Insert(i, rule);
+                break;
+            }
+        }
+    }
+
+    public override string ToString()
+    {
+        var sl = new List<string>();
+        foreach (var rule in this.rules) {
+            sl.Add(rule.Name+":"+rule.CriteriaCount().ToString());
+        }
+        string s = String.Join(",", sl);
+        return $"({s})";
+    }
+}
+
+[Flags]
+public enum RSRuleFlags
+{
+    None = 0,
+    NoRepeat = 1,
+}
+
+public class RSRule {
+    public string Name;
+    bool disabled; // automagically as a result of flags
+    public RSRuleFlags Flags;
+    List<string> criteria = new List<string>();
+    List<string> responses = new List<string>();
+
+    public RSRule(string name, string criteria, string responses, bool norepeat) {
+        this.Name = name;
+        char[] splitters = {' '};
+        foreach (var criteriaName in criteria.Split(splitters, System.StringSplitOptions.RemoveEmptyEntries)) {
+            this.criteria.Add(criteriaName);
+        }
+        foreach (var responseName in responses.Split(splitters, System.StringSplitOptions.RemoveEmptyEntries)) {
+            this.responses.Add(responseName);
+        }
+
+        if (norepeat) {
+            this.Flags |= RSRuleFlags.NoRepeat;
+        }
+    }
+
+    public int CriteriaCount() {
+        return this.criteria.Count;
+    }
+
+    // public List<string> BucketsThisGoesIn(List<RSBucketKey> bucketKeys) {
+
+    // }
+}
+
 [Flags]
 public enum RSResponseFlags
 {
@@ -193,6 +269,8 @@ public class RSManager : MonoBehaviour
     Dictionary<string,RSResponseGroup> responseGroups = new Dictionary<string,RSResponseGroup>();
     List<GameObject> entitesThatCanIdle = new List<GameObject>();
 
+    RSRulesBucket lazyAllRules = new RSRulesBucket();
+
     void LoadConceptsCSV(string path)
     {
         Debug.Log("Loading Concepts CSV: " + path);
@@ -268,7 +346,7 @@ public class RSManager : MonoBehaviour
                 if (csvReader[columnIDs["optional"]] != "") {
                     optional = Convert.ToBoolean(csvReader[columnIDs["optional"]]);
                 }
-                AddCriterion(name, new RSCriterion(matchkey, matchvalue, weight, optional));
+                this.AddCriterion(name, new RSCriterion(matchkey, matchvalue, weight, optional));
             }
         }
     }
@@ -283,6 +361,42 @@ public class RSManager : MonoBehaviour
     void LoadRulesCSV(string path)
     {
         Debug.Log("Loading Rules CSV: " + path);
+        Dictionary<string,int> columnIDs = new Dictionary<string,int>();
+        using (var streamRdr = new StreamReader(path)) {
+            var csvReader = new CsvReader(streamRdr, ",");
+            while (csvReader.Read()) {
+                // load column names
+                if (columnIDs.Count == 0) {
+                    for (int i=0; i<csvReader.FieldsCount; i++) {
+                        columnIDs.Add(csvReader[i], i);
+                    }
+
+                    // check that file is valid. if not, we die.
+                    if (!(columnIDs.ContainsKey("name") && columnIDs.ContainsKey("criteria") && columnIDs.ContainsKey("responses") && columnIDs.ContainsKey("norepeat"))) {
+                        throw new Exception("The Rules CSV file [" + path + "] does not contain all the columns we require");
+                    }
+                    continue;
+                }
+                // load in rule
+                string name = csvReader[columnIDs["name"]];
+                string criteria = csvReader[columnIDs["criteria"]];
+                string responses = csvReader[columnIDs["responses"]];
+                bool norepeat = false;
+                string norepeatString = csvReader[columnIDs["norepeat"]];
+                if (norepeatString != "") {
+                    norepeat = Convert.ToBoolean(norepeatString);
+                }
+
+                if (name == "") {
+                    // skip empty rows
+                    continue;
+                }
+                Debug.Log("Loading rule: " + name);
+                var rule = new RSRule(name, criteria, responses, norepeat);
+                this.lazyAllRules.Insert(rule);
+            }
+        }
+        Debug.Log(this.lazyAllRules);
     }
     
     void LoadResponsesCSV(string path)
