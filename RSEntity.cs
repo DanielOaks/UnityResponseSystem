@@ -19,6 +19,10 @@ public class RSEntity : MonoBehaviour
     [Min(0)]
     public float idleJitter = 1;
 
+    //TODO(dan): add entity fact dictionaries here. we'll need to make a
+    // Serializable class for this because Unity doesn't like exposing
+    // dictionaries for in-editor editing. see how RSBucketKey does it.
+
     // Start is called before the first frame update
     void Start()
     {

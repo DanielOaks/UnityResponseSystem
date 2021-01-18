@@ -16,6 +16,8 @@ public class RSBucketKey {
 public class RSCriterion {
     string matchkey;
     string matchvalue;
+    float matchmin = Single.NegativeInfinity;
+    float matchmax = Single.PositiveInfinity;
     float weight = 1;
     bool optional;
 
@@ -24,13 +26,22 @@ public class RSCriterion {
         this.matchvalue = matchvalue;
         this.weight = weight;
         this.optional = optional;
+
+        //TODO(dan): parse out other matchvalue strings
+        if (matchvalue.StartsWith("\"") && matchvalue.EndsWith("\"")) {
+            this.matchmin = Convert.ToSingle(MurmurHash2.Hash(matchvalue.Substring(1, matchvalue.Length-2)));
+            this.matchmax = this.matchmin;
+        } else {
+            throw new Exception("Could not parse matchvalue ["+matchvalue+"] from criterion ["+matchkey+"]");
+        }
     }
 
     public bool Matches(string value) {
-        //TODO(dan): Hash and use min/max values as the talk recommends lol.
-        // this will probably involve splitting up matchvalue into min+max
-        // values, which can be really easily compared. then, ALWAYS a<=x<=b (slide 118).
-        return value == this.matchvalue;
+        // do we need to do weird epsilon stuff or whatever here??
+        // see https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+        // and ~ slide 118 of the presentation.
+        float realValue = Convert.ToSingle(MurmurHash2.Hash(value));
+        return this.matchmin <= realValue && realValue <= this.matchmax;
     }
 
     public override string ToString()
@@ -261,6 +272,10 @@ public class RSManager : MonoBehaviour
     [Tooltip("Within how many seconds of the real time can the manager fire idle events? Lets the manager wait more efficiently.")]
     public float idleMungeSeconds = 0.1F;
 
+    //TODO(dan): add world fact dictionaries here. we'll need to make a
+    // Serializable class for this because Unity doesn't like exposing
+    // dictionaries for in-editor editing. see how RSBucketKey does it.w
+
     [Tooltip("We split up our rules into separate buckets based on these keys.")]
     public List<RSBucketKey> bucketKeys = new List<RSBucketKey>();
 
@@ -391,7 +406,6 @@ public class RSManager : MonoBehaviour
                     // skip empty rows
                     continue;
                 }
-                Debug.Log("Loading rule: " + name);
                 var rule = new RSRule(name, criteria, responses, norepeat);
                 this.lazyAllRules.Insert(rule);
             }
