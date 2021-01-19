@@ -5,7 +5,7 @@ using UnityEngine;
 public class RSEntity : MonoBehaviour
 {
     [Tooltip("Name that the response system refers to this with. If this is a common entity (can, door, etc) then use the same name for all of these entities.")]
-    public string responseSystemName;
+    public string Name;
 
     [Header("Idle Actions")]
 

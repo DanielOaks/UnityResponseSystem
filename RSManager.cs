@@ -282,7 +282,7 @@ public class RSManager : MonoBehaviour
     Dictionary<string,int> conceptIDs = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
     Dictionary<string,RSCriterion> criteria = new Dictionary<string,RSCriterion>();
     Dictionary<string,RSResponseGroup> responseGroups = new Dictionary<string,RSResponseGroup>();
-    List<GameObject> entitesThatCanIdle = new List<GameObject>();
+    Dictionary<GameObject,DateTime> entityNextIdleTime = new Dictionary<GameObject,DateTime>();
 
     RSRulesBucket lazyAllRules = new RSRulesBucket();
 
@@ -534,8 +534,39 @@ public class RSManager : MonoBehaviour
         foreach (GameObject entityGO in GameObject.FindGameObjectsWithTag("ResponseSystemEntity")) {
             RSEntity entity = entityGO.GetComponent(typeof(RSEntity)) as RSEntity;
             if (entity.canIdle) {
-                Debug.Log("Found idling entity " + entity.name);
-                entitesThatCanIdle.Add(entityGO);
+                Debug.Log("Found idling entity " + entity.Name);
+                var idleTime = DateTime.Now.AddSeconds(entity.secondsBetweenIdle + UnityEngine.Random.Range(entity.idleJitter*-1,entity.idleJitter));
+                this.entityNextIdleTime.Add(entityGO, idleTime);
+            }
+        }
+        // spin off idle coroutine
+        StartCoroutine("IdleLoop");
+    }
+
+    IEnumerator IdleLoop()
+    {
+        GameObject nextIdlingEntity = null;
+        while (true) {
+            if (nextIdlingEntity != null) {
+                RSEntity entity = nextIdlingEntity.GetComponent(typeof(RSEntity)) as RSEntity;
+                Debug.Log("entity "+entity.Name+" is idling");
+                // update idle time
+                var nextIdleTime = DateTime.Now.AddSeconds(entity.secondsBetweenIdle + UnityEngine.Random.Range(entity.idleJitter*-1,entity.idleJitter));
+                this.entityNextIdleTime[nextIdlingEntity] = nextIdleTime;
+            }
+            // find next idling entity
+            DateTime idleTime = DateTime.MaxValue;
+            foreach (KeyValuePair<GameObject,DateTime> val in this.entityNextIdleTime) {
+                if (val.Value.CompareTo(idleTime) < 0) {
+                    idleTime = val.Value;
+                    nextIdlingEntity = val.Key;
+                }
+            }
+            float idleSecs = (float) idleTime.Subtract(DateTime.Now).TotalSeconds;
+            if (this.idleMungeSeconds < idleSecs) {
+                yield return new WaitForSeconds(idleSecs);
+            } else {
+                yield return null;
             }
         }
     }
@@ -544,5 +575,10 @@ public class RSManager : MonoBehaviour
     void Update()
     {
         
+    }
+
+    void OnDestroy()
+    {
+        StopCoroutine("IdleLoop");
     }
 }
