@@ -39,7 +39,7 @@ namespace DanielOaks.RS
         public List<RSBucketKey> bucketKeys = new List<RSBucketKey>();
 
         Dictionary<string,int> conceptIDs = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string,RSCriterion> criteria = new Dictionary<string,RSCriterion>();
+        public Dictionary<string,RSCriterion> criteria = new Dictionary<string,RSCriterion>();
         Dictionary<string,RSResponseGroup> responseGroups = new Dictionary<string,RSResponseGroup>();
         Dictionary<GameObject,DateTime> entityNextIdleTime = new Dictionary<GameObject,DateTime>();
 
@@ -257,6 +257,22 @@ namespace DanielOaks.RS
             this.responseGroups.Add(responseGroup.Name, responseGroup);
         }
 
+        public void Run(ref RSQuery query, GameObject gameObject) {
+            this.lazyAllRules.Run(ref query, this, gameObject);
+        }
+
+        public bool RunResponses(List<string> responses, ref RSQuery query, GameObject gameObject) {
+            bool responseRun = false;
+            foreach (var response in responses) {
+                if (!this.responseGroups.ContainsKey(response)) {
+                    continue;
+                }
+                responseRun = true;
+                this.responseGroups[response].Run(ref query, gameObject);
+            }
+            return responseRun;
+        }
+
         // Start is called before the first frame update
         void Start()
         {
@@ -300,6 +316,24 @@ namespace DanielOaks.RS
             }
             // spin off idle coroutine
             StartCoroutine("IdleLoop");
+
+            // send off a fake idle event.
+            var query = new RSQuery();
+            query.Add("concept", "idle");
+            query.Add("who", "em");
+            query.Add("action", "repairing");
+            GameObject gameObjectEm = null;
+            foreach (GameObject entityGO in GameObject.FindGameObjectsWithTag("ResponseSystemEntity")) {
+                RSEntity entity = entityGO.GetComponent(typeof(RSEntity)) as RSEntity;
+                if (entity.Name == "em") {
+                    gameObjectEm = entityGO;
+                    break;
+                }
+            }
+            if (gameObjectEm != null) {
+                Debug.Log("dispatching fake idle event for idling em");
+                this.Run(ref query, gameObjectEm);
+            }
         }
 
         IEnumerator IdleLoop()

@@ -51,6 +51,18 @@ namespace DanielOaks.RS
         public void AddFactDictionary(ref RSFactDictionary fd) {
             this.extraFactDictionaries.Add(fd);
         }
+
+        public bool Matches(RSCriterion critereon) {
+            if (this.facts.Facts.ContainsKey(critereon.Matchkey)) {
+                return critereon.Matches(this.facts.Facts[critereon.Matchkey]);
+            }
+            foreach (var facts in this.extraFactDictionaries) {
+                if (facts.Facts.ContainsKey(critereon.Matchkey)) {
+                    return critereon.Matches(facts.Facts[critereon.Matchkey]);
+                }
+            }
+            return false;
+        }
     }
 
 }

@@ -6,6 +6,7 @@
 
 using System.Collections.Generic;
 using System;
+using UnityEngine;
 
 namespace DanielOaks.RS
 {
@@ -51,6 +52,11 @@ namespace DanielOaks.RS
         public RSResponseGroup(string name, RSResponseGroupFlags flags) {
             this.Name = name;
             this.flags = flags;
+        }
+
+        public void Run(ref RSQuery query, GameObject gameObject) {
+            //TODO(dan): implement first and last flags properly \o/
+            Debug.Log("Running ResponseGroup called "+this.Name);
         }
 
         public void Add(RSResponse response) {

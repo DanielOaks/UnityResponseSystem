@@ -10,18 +10,18 @@ namespace DanielOaks.RS
 {
 
     public class RSCriterion {
-        string matchkey;
+        public string Matchkey;
         string matchvalue;
         float matchmin = Single.NegativeInfinity;
         float matchmax = Single.PositiveInfinity;
         float weight = 1;
-        bool optional;
+        public bool Optional;
 
         public RSCriterion(string matchkey, string matchvalue, float weight, bool optional) {
-            this.matchkey =  matchkey;
+            this.Matchkey =  matchkey;
             this.matchvalue = matchvalue;
             this.weight = weight;
-            this.optional = optional;
+            this.Optional = optional;
 
             //TODO(dan): parse out other matchvalue strings
             if (matchvalue.StartsWith("\"") && matchvalue.EndsWith("\"")) {
@@ -40,9 +40,17 @@ namespace DanielOaks.RS
             return this.matchmin <= realValue && realValue <= this.matchmax;
         }
 
+        public bool Matches(int value) {
+            return this.matchmin <= value && value <= this.matchmax;
+        }
+
+        public bool Matches(float value) {
+            return this.matchmin <= value && value <= this.matchmax;
+        }
+
         public override string ToString()
         {
-            return $"({matchkey},{matchvalue},{weight},{optional})";
+            return $"({Matchkey},{matchvalue},{weight},{Optional})";
         }
     }
 
