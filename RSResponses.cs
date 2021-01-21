@@ -55,7 +55,10 @@ namespace DanielOaks.RS
         }
 
         public bool Run(ref RSQuery query, GameObject gameObject) {
-            //TODO(dan): implement last flags properly
+            // we've got NoRepeat and have been disabled
+            if (this.disabled) {
+                return false;
+            }
             Debug.Log("Running ResponseGroup called "+this.Name);
             if (this.firstResponse != null) {
                 RSResponse firstResponse = this.responses[(int) this.firstResponse];
@@ -63,6 +66,28 @@ namespace DanielOaks.RS
                     this.RunResponse(firstResponse);
                     return true;
                 }
+            }
+            RSResponse lastResponse = null;
+            if (this.lastResponse != null) {
+                lastResponse = this.responses[(int) this.lastResponse];
+
+                // confirm that no other un-disabled responses can be run
+                bool anyOtherResponsesCanFire = false;
+                foreach (var response in this.responses) {
+                    if (!response.Disabled) {
+                        anyOtherResponsesCanFire = true;
+                        break;
+                    }
+                }
+
+                if (!anyOtherResponsesCanFire && lastResponse.CanFire()) {
+                    this.RunResponse(lastResponse);
+                    return true;
+                }
+                
+                // going forward in this function, lastResponse is one that we
+                // shouldn't call because if we were to call it it would've
+                // already happened above ^
             }
             if (this.flags.HasFlag(RSResponseGroupFlags.Sequential)) {
                 // run responses sequentially
@@ -75,23 +100,26 @@ namespace DanielOaks.RS
             } else {
                 // get a random response, weighted appropriately, and fire it.
                 float totalWeight = 0;
-                RSResponse lastResponse = null;
+                RSResponse finalResponseWeSaw = null;
                 foreach (var response in this.responses) {
-                    if (response.CanFire()) {
+                    if (response != lastResponse && response.CanFire()) {
                         totalWeight += response.Weight;
-                        lastResponse = response;
+                        finalResponseWeSaw = response;
                     }
                 }
-                if (lastResponse == null) {
+                if (finalResponseWeSaw == null) {
                     // no valid responses
                     return false;
                 }
                 float weight = UnityEngine.Random.Range(0F, totalWeight);
                 foreach (var response in this.responses) {
+                    if (response == lastResponse) {
+                        continue;
+                    }
                     if (response.CanFire()) {
                         weight -= response.Weight;
                     }
-                    if (weight <= 0 || response == lastResponse) {
+                    if (weight <= 0 || response == finalResponseWeSaw) {
                         this.RunResponse(response);
                         return true;
                     }
@@ -102,6 +130,49 @@ namespace DanielOaks.RS
 
         void RunResponse(RSResponse response) {
             Debug.Log("RunResp: "+response.ResponseValue);
+            // update response's dontResayBefore timer and disabled bool
+            // based on response's norepeat flag
+            response.JustFired();
+
+            if (this.flags.HasFlag(RSResponseGroupFlags.PermitRepeats)) {
+                //TODO(dan): if this response is First, we should have a
+                // special bool on the response called CanBeFirst, which we
+                // set to false here, so that this response is no longer
+                // marked as the 'first' response to call. because it
+                // already has been.
+                // maybe it'd be worth just disabling the response right now
+                // if it has the first flag, but I'd need to try out the system
+                // to figure out whether that's the most intuiative way to
+                // handle this certain combination of flags:
+                //  group[PermitRepeats] response[First]
+                //
+                // though to be honest, having a NoRepeat flag on the response
+                // would deliver the above proposed functionality, so it
+                // instead probably makes sense to do the CanBeFirst thing.
+                return;
+            }
+
+            bool anyResponsesYetToFire = false;
+            foreach (var ri in this.responses) {
+                if (!ri.Disabled) {
+                    anyResponsesYetToFire = true;
+                    break;
+                }
+            }
+
+            if (!anyResponsesYetToFire) {
+                if (this.flags.HasFlag(RSResponseGroupFlags.NoRepeat)) {
+                    this.disabled = true;
+                    return;
+                }
+
+                // reset all resettable responses because we're bloody out
+                foreach (var ri in this.responses) {
+                    if (!ri.Flags.HasFlag(RSResponseFlags.NoRepeat)) {
+                        ri.Disabled = false;
+                    }
+                }
+            }
         }
 
         public void Add(RSResponse response) {
@@ -131,7 +202,7 @@ namespace DanielOaks.RS
     }
 
     public class RSResponse {
-        bool disabled; // automagically as a result of flags
+        public bool Disabled; // automagically as a result of flags
         public RSResponseFlags Flags;
         public RSResponseType ResponseType;
         public string ResponseValue;
@@ -190,12 +261,12 @@ namespace DanielOaks.RS
                 this.dontResayBefore = DateTime.Now.AddSeconds(this.resayDelaySeconds);
             }
             if (this.Flags.HasFlag(RSResponseFlags.NoRepeat)) {
-                this.disabled = true;
+                this.Disabled = true;
             }
         }
 
         public bool CanFire() {
-            return DateTime.Compare(DateTime.Now, this.dontResayBefore) >= 0 && !this.disabled;
+            return DateTime.Compare(DateTime.Now, this.dontResayBefore) >= 0 && !this.Disabled;
         }
     }
 
