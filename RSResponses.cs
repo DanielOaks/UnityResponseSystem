@@ -54,9 +54,54 @@ namespace DanielOaks.RS
             this.flags = flags;
         }
 
-        public void Run(ref RSQuery query, GameObject gameObject) {
-            //TODO(dan): implement first and last flags properly \o/
+        public bool Run(ref RSQuery query, GameObject gameObject) {
+            //TODO(dan): implement last flags properly
             Debug.Log("Running ResponseGroup called "+this.Name);
+            if (this.firstResponse != null) {
+                RSResponse firstResponse = this.responses[(int) this.firstResponse];
+                if (firstResponse.CanFire()) {
+                    this.RunResponse(firstResponse);
+                    return true;
+                }
+            }
+            if (this.flags.HasFlag(RSResponseGroupFlags.Sequential)) {
+                // run responses sequentially
+                foreach (var response in this.responses) {
+                    if (response.CanFire()) {
+                        this.RunResponse(response);
+                        return true;
+                    }
+                }
+            } else {
+                // get a random response, weighted appropriately, and fire it.
+                float totalWeight = 0;
+                RSResponse lastResponse = null;
+                foreach (var response in this.responses) {
+                    if (response.CanFire()) {
+                        totalWeight += response.Weight;
+                        lastResponse = response;
+                    }
+                }
+                if (lastResponse == null) {
+                    // no valid responses
+                    return false;
+                }
+                float weight = UnityEngine.Random.Range(0F, totalWeight);
+                foreach (var response in this.responses) {
+                    if (response.CanFire()) {
+                        weight -= response.Weight;
+                    }
+                    if (weight <= 0 || response == lastResponse) {
+                        this.RunResponse(response);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        void RunResponse(RSResponse response) {
+            Debug.Log("RunResp: "+response.ResponseValue);
         }
 
         public void Add(RSResponse response) {
@@ -88,14 +133,14 @@ namespace DanielOaks.RS
     public class RSResponse {
         bool disabled; // automagically as a result of flags
         public RSResponseFlags Flags;
-        RSResponseType responseType;
-        string responseValue;
+        public RSResponseType ResponseType;
+        public string ResponseValue;
         bool delayAuto;
         float delaySeconds;
         float odds;
         float resayDelaySeconds;
         DateTime dontResayBefore;
-        float weight;
+        public float Weight;
         //TODO(dan): add `then` response firing
 
         public RSResponse(string flags, string responseType, string responseValue, bool delayAuto, float delaySeconds, float odds, float resayDelaySeconds, float weight) {
@@ -117,17 +162,17 @@ namespace DanielOaks.RS
                 }
             }
 
-            this.responseValue = responseValue;
+            this.ResponseValue = responseValue;
             switch (responseType) {
                 case "log":
-                    this.responseType = RSResponseType.Log;
+                    this.ResponseType = RSResponseType.Log;
                     break;
                 case "say":
-                    this.responseType = RSResponseType.Say;
+                    this.ResponseType = RSResponseType.Say;
                     break;
                 default:
-                    this.responseType = RSResponseType.Log;
-                    this.responseValue = "Invalid response type ["+responseType+"] with value ["+responseValue+"]";
+                    this.ResponseType = RSResponseType.Log;
+                    this.ResponseValue = "Invalid response type ["+responseType+"] with value ["+responseValue+"]";
                     break;
             }
 
@@ -135,7 +180,8 @@ namespace DanielOaks.RS
             this.delaySeconds = delaySeconds;
             this.odds = odds;
             this.resayDelaySeconds = resayDelaySeconds;
-            this.weight = weight;
+            this.dontResayBefore = DateTime.Now.AddSeconds(-10F);
+            this.Weight = weight;
         }
 
         // mark this respone as just being fired.
@@ -149,7 +195,7 @@ namespace DanielOaks.RS
         }
 
         public bool CanFire() {
-            return DateTime.Compare(DateTime.Now, this.dontResayBefore) <= 0 && !this.disabled;
+            return DateTime.Compare(DateTime.Now, this.dontResayBefore) >= 0 && !this.disabled;
         }
     }
 

@@ -267,8 +267,10 @@ namespace DanielOaks.RS
                 if (!this.responseGroups.ContainsKey(response)) {
                     continue;
                 }
-                responseRun = true;
-                this.responseGroups[response].Run(ref query, gameObject);
+                var trr = this.responseGroups[response].Run(ref query, gameObject);
+                if (responseRun == false) {
+                    responseRun = trr;
+                }
             }
             return responseRun;
         }
@@ -321,7 +323,7 @@ namespace DanielOaks.RS
             var query = new RSQuery();
             query.Add("concept", "idle");
             query.Add("who", "em");
-            query.Add("action", "repairing");
+            // query.Add("action", "repairing");
             GameObject gameObjectEm = null;
             foreach (GameObject entityGO in GameObject.FindGameObjectsWithTag("ResponseSystemEntity")) {
                 RSEntity entity = entityGO.GetComponent(typeof(RSEntity)) as RSEntity;
