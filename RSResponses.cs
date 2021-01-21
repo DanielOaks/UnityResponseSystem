@@ -54,7 +54,7 @@ namespace DanielOaks.RS
             this.flags = flags;
         }
 
-        public bool Run(ref RSQuery query, GameObject gameObject) {
+        public bool Run(RSManager manager, ref RSQuery query, GameObject gameObject) {
             // we've got NoRepeat and have been disabled
             if (this.disabled) {
                 return false;
@@ -63,7 +63,7 @@ namespace DanielOaks.RS
             if (this.firstResponse != null) {
                 RSResponse firstResponse = this.responses[(int) this.firstResponse];
                 if (firstResponse.CanFire()) {
-                    this.RunResponse(firstResponse);
+                    this.RunResponse(firstResponse, manager, ref query, gameObject);
                     return true;
                 }
             }
@@ -81,7 +81,7 @@ namespace DanielOaks.RS
                 }
 
                 if (!anyOtherResponsesCanFire && lastResponse.CanFire()) {
-                    this.RunResponse(lastResponse);
+                    this.RunResponse(lastResponse, manager, ref query, gameObject);
                     return true;
                 }
                 
@@ -93,7 +93,7 @@ namespace DanielOaks.RS
                 // run responses sequentially
                 foreach (var response in this.responses) {
                     if (response.CanFire()) {
-                        this.RunResponse(response);
+                        this.RunResponse(response, manager, ref query, gameObject);
                         return true;
                     }
                 }
@@ -120,7 +120,7 @@ namespace DanielOaks.RS
                         weight -= response.Weight;
                     }
                     if (weight <= 0 || response == finalResponseWeSaw) {
-                        this.RunResponse(response);
+                        this.RunResponse(response, manager, ref query, gameObject);
                         return true;
                     }
                 }
@@ -128,8 +128,7 @@ namespace DanielOaks.RS
             return false;
         }
 
-        void RunResponse(RSResponse response) {
-            Debug.Log("RunResp: "+response.ResponseValue);
+        void RunResponse(RSResponse response, RSManager manager, ref RSQuery query, GameObject gameObject) {
             // update response's dontResayBefore timer and disabled bool
             // based on response's norepeat flag
             response.JustFired();
@@ -173,6 +172,9 @@ namespace DanielOaks.RS
                     }
                 }
             }
+
+            // actually run the response and do response-like things for it.
+            Debug.Log("resp:: "+response.ResponseValue);
         }
 
         public void Add(RSResponse response) {

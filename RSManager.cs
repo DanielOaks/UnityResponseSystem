@@ -267,7 +267,7 @@ namespace DanielOaks.RS
                 if (!this.responseGroups.ContainsKey(response)) {
                     continue;
                 }
-                var trr = this.responseGroups[response].Run(ref query, gameObject);
+                var trr = this.responseGroups[response].Run(this, ref query, gameObject);
                 if (responseRun == false) {
                     responseRun = trr;
                 }
@@ -344,10 +344,12 @@ namespace DanielOaks.RS
             while (true) {
                 if (nextIdlingEntity != null) {
                     RSEntity entity = nextIdlingEntity.GetComponent(typeof(RSEntity)) as RSEntity;
-                    Debug.Log("entity "+entity.Name+" is idling");
                     // update idle time
                     var nextIdleTime = DateTime.Now.AddSeconds(entity.secondsBetweenIdle + UnityEngine.Random.Range(entity.idleJitter*-1,entity.idleJitter));
                     this.entityNextIdleTime[nextIdlingEntity] = nextIdleTime;
+
+                    // actually make the entity idle
+                    Debug.Log("entity "+entity.Name+" is idling");
                 }
                 // find next idling entity
                 DateTime idleTime = DateTime.MaxValue;
