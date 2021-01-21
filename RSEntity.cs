@@ -29,14 +29,21 @@ namespace DanielOaks.RS
         [Min(0)]
         public float idleJitter = 1;
 
-        //TODO(dan): add entity fact dictionaries here. we'll need to make a
-        // Serializable class for this because Unity doesn't like exposing
-        // dictionaries for in-editor editing. see how RSBucketKey does it.
+        public RSFactDictionary Facts = new RSFactDictionary();
 
         // Start is called before the first frame update
         void Start()
         {
-            
+            // populate our base facts
+            this.InitFacts();
+        }
+
+        public virtual void InitFacts() {
+            // do nothing
+        }
+
+        public virtual void UpdateFacts() {
+            // do nothing
         }
 
         // Update is called once per frame

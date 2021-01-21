@@ -45,6 +45,8 @@ namespace DanielOaks.RS
 
         RSRulesBucket lazyAllRules = new RSRulesBucket();
 
+        public RSFactDictionary Facts = new RSFactDictionary();
+
         void LoadConceptsCSV(string path)
         {
             Debug.Log("Loading Concepts CSV: " + path);
@@ -316,26 +318,20 @@ namespace DanielOaks.RS
                     this.entityNextIdleTime.Add(entityGO, idleTime);
                 }
             }
+
+            // populate our base facts
+            this.InitFacts();
+
             // spin off idle coroutine
             StartCoroutine("IdleLoop");
+        }
 
-            // send off a fake idle event.
-            var query = new RSQuery();
-            query.Add("concept", "idle");
-            query.Add("who", "em");
-            // query.Add("action", "repairing");
-            GameObject gameObjectEm = null;
-            foreach (GameObject entityGO in GameObject.FindGameObjectsWithTag("ResponseSystemEntity")) {
-                RSEntity entity = entityGO.GetComponent(typeof(RSEntity)) as RSEntity;
-                if (entity.Name == "em") {
-                    gameObjectEm = entityGO;
-                    break;
-                }
-            }
-            if (gameObjectEm != null) {
-                Debug.Log("dispatching fake idle event for idling em");
-                this.Run(ref query, gameObjectEm);
-            }
+        public virtual void InitFacts() {
+            // do nothing
+        }
+
+        public virtual void UpdateFacts() {
+            // do nothing
         }
 
         IEnumerator IdleLoop()
@@ -350,6 +346,14 @@ namespace DanielOaks.RS
 
                     // actually make the entity idle
                     Debug.Log("entity "+entity.Name+" is idling");
+                    var query = new RSQuery();
+                    query.Set("concept", "idle");
+                    query.Set("who", entity.Name);
+                    entity.UpdateFacts();
+                    query.AddFactDictionary(ref entity.Facts);
+                    this.UpdateFacts();
+                    query.AddFactDictionary(ref this.Facts);
+                    this.Run(ref query, nextIdlingEntity);
                 }
                 // find next idling entity
                 DateTime idleTime = DateTime.MaxValue;
