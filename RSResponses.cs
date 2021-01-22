@@ -174,7 +174,7 @@ namespace DanielOaks.RS
             }
 
             // actually run the response and do response-like things for it.
-            Debug.Log("resp:: "+response.ResponseValue);
+            manager.DispatchResponse(response, ref query, gameObject);
         }
 
         public void Add(RSResponse response) {

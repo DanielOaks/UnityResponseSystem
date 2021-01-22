@@ -334,6 +334,13 @@ namespace DanielOaks.RS
             // do nothing
         }
 
+        public virtual void DispatchResponse(RSResponse response, ref RSQuery query, GameObject gameObject) {
+            // just dispatch it to the entity who's having the response. if
+            // managers want to they can override this later.
+            RSEntity entity = gameObject.GetComponent(typeof(RSEntity)) as RSEntity;
+            entity.DispatchResponse(response, ref query);
+        }
+
         IEnumerator IdleLoop()
         {
             GameObject nextIdlingEntity = null;

@@ -46,6 +46,10 @@ namespace DanielOaks.RS
             // do nothing
         }
 
+        public virtual void DispatchResponse(RSResponse response, ref RSQuery query) {
+            Debug.Log("resp:: "+response.ResponseValue);
+        }
+
         // Update is called once per frame
         void Update()
         {
