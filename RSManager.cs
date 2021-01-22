@@ -31,10 +31,7 @@ namespace DanielOaks.RS
         [Tooltip("Within how many seconds of the real time can the manager fire idle events? Lets the manager wait more efficiently.")]
         public float idleMungeSeconds = 0.1F;
 
-        //TODO(dan): add world fact dictionaries here. we'll need to make a
-        // Serializable class for this because Unity doesn't like exposing
-        // dictionaries for in-editor editing. see how RSBucketKey does it.w
-
+        //TODO(dan): utilise bucket keys lol, instead of the lazyAllRules bucket below
         [Tooltip("We split up our rules into separate buckets based on these keys.")]
         public List<RSBucketKey> bucketKeys = new List<RSBucketKey>();
 
